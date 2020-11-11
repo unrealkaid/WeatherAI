@@ -605,7 +605,7 @@ class Window(Frame):
             model = load_model("../../data/models/model-50.hdf5")
             test = np.zeros((1, 1, 3))
 
-            if self.current == True:
+            if self.current:
                 api_access = _APIAccess.APIAccess
                 api_access.getCurrent(api_access)
                 test[0][0][0] = (api_access.temp_1 - 244) / (323 - 244)

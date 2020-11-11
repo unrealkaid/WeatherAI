@@ -1,7 +1,10 @@
 import tkinter as tk
 from enum import Enum
 from typing import List, Dict
-from AIForecast import utils as logger
+import numpy as np
+from tensorflow.python.keras.models import load_model
+
+from AIForecast import utils
 
 BACKGROUND_COLOR = '#525453'
 """
@@ -395,7 +398,10 @@ class TestMenu(Menu):
         """
         Todo: Implement the testing strategy.
         """
-        logger.log(self.__name__).debug("Loading Weather Model!")
+        model = load_model(utils.path_utils.get_model_path() + "/model-50.hdf5")
+        test_data = np.zeros((1, 1, 3))
+        prediction = model.predict(test_data)
+        utils.log(self.__name__).debug("Loading Weather Model!")
 
 
 class TrainMenu(Menu):
@@ -466,6 +472,14 @@ class TrainMenu(Menu):
         self.run_training.destroy()
         self.output_text.destroy()
 
+    def _run_train(self):
+        """
+        Trains historical weather data through a Recurring Neural Network (RNN)
+        :return:
+        Author: Marcus Kline
+        """
+        pass
+
 
 class OptionsMenu(Menu):
     pass
@@ -508,7 +522,7 @@ class AppWindow:
 
     @staticmethod
     def display_screen(screen: Menus):
-        logger.log(__name__).debug("Opening " + str(screen) + "!")
+        utils.log(__name__).debug("Opening " + str(screen) + "!")
         if AppWindow.current_menu is not None:
             AppWindow.current_menu.hide()
         AppWindow.current_menu = AppWindow.menu_list[screen]
