@@ -3,8 +3,9 @@ from enum import Enum
 from typing import List, Dict
 import numpy as np
 from tensorflow.python.keras.models import load_model
-
+from AIForecast.access import WeatherAccess
 from AIForecast import utils
+from AIForecast.RNN import _RNN
 
 BACKGROUND_COLOR = '#525453'
 """
@@ -69,7 +70,6 @@ class Drawable:
 
 
 class NavBar(Drawable):
-
     NAV_COLOR = 'gray'
     NAV_HEIGHT = 40
 
@@ -115,7 +115,7 @@ class NavBar(Drawable):
         self.nav_frame.place(x=0, y=0, relwidth=1, height=self.NAV_HEIGHT)
         i = 0
         for button in self.nav_buttons:
-            button.place(x=10 + 100*i + 5*i, rely=0.2, relheight=0.55, width=100)
+            button.place(x=10 + 100 * i + 5 * i, rely=0.2, relheight=0.55, width=100)
             i += 1
 
     def hide(self):
@@ -186,23 +186,23 @@ class TestMenu(Menu):
 
     def __init__(self, app_frame: tk.Frame):
         Menu.__init__(self, app_frame)
-        self.input_frame = None                     # Type: tk.Frame
-        self.left_pane = None                       # Type: tk.Frame
-        self.source_select_label = None             # Type: tk.Label
-        self.source_current_radio = None            # Type: tk.Radiobutton
-        self.source_manual_radio = None             # Type: tk.Radiobutton
-        self.source_desc_label = None               # Type: tk.Label
+        self.input_frame = None  # Type: tk.Frame
+        self.left_pane = None  # Type: tk.Frame
+        self.source_select_label = None  # Type: tk.Label
+        self.source_current_radio = None  # Type: tk.Radiobutton
+        self.source_manual_radio = None  # Type: tk.Radiobutton
+        self.source_desc_label = None  # Type: tk.Label
         self.radio_group = tk.IntVar()
-        self.right_pane = None                      # Type: tk.Frame
-        self.surrounding_cities_label = None        # Type: tk.Label
-        self.surrounding_cities_listbox = None      # Type: tk.Listbox
-        self.target_cities_label = None             # Type: tk.Label
-        self.target_cities_listbox = None           # Type: tk.Listbox
-        self.enter_button = None                      # Type: tk.Button
-        self.output_frame = None                    # Type: tk.Frame
-        self.button_desc_label = None               # Type: tk.Label
-        self.output_text = None                     # Type: tk.Text
-        self.run_button = None                      # Type: tk.Button
+        self.right_pane = None  # Type: tk.Frame
+        self.surrounding_cities_label = None  # Type: tk.Label
+        self.surrounding_cities_listbox = None  # Type: tk.Listbox
+        self.target_cities_label = None  # Type: tk.Label
+        self.target_cities_listbox = None  # Type: tk.Listbox
+        self.enter_button = None  # Type: tk.Button
+        self.output_frame = None  # Type: tk.Frame
+        self.button_desc_label = None  # Type: tk.Label
+        self.output_text = None  # Type: tk.Text
+        self.run_button = None  # Type: tk.Button
 
     def init_ui(self):
         Menu.init_ui(self)
@@ -450,7 +450,7 @@ class TrainMenu(Menu):
             self.body,
             text="Run",
             borderwidth=BUTTON_BORDER_WIDTH,
-            command=lambda: print("test3")
+            command=lambda: self._run_train()
         )
         self.output_text = tk.Text(self.body)
 
@@ -475,10 +475,11 @@ class TrainMenu(Menu):
     def _run_train(self):
         """
         Trains historical weather data through a Recurring Neural Network (RNN)
-        :return:
+        :return: NULL
         Author: Marcus Kline
         """
-        pass
+        rnn_object = _RNN.RNN()
+        self.output_text.insert(rnn_object.run_rnn())
 
 
 class OptionsMenu(Menu):
