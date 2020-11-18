@@ -18,7 +18,7 @@ class PathUtils:
     # Names of the data directory.
     # The data directory stores all relevant system files.
     # This variable should remain constant.
-    DATA_DIR, MODEL_DIR, PKL_DIR = 'data', 'models', 'pickles'
+    DATA_DIR, MODEL_DIR, PKL_DIR = 'data', 'data\\models', 'data\\pickles'
 
     # Private:
     # Name of the file that stores the API key/
@@ -26,7 +26,7 @@ class PathUtils:
 
     # Public:
     # Pickle file names
-    TESTING_FILE, TRAINING_FILE, VALIDATION_FILE = 'test_data.pkl', 'train_data.pkl', 'validation.pkl'
+    TESTING_FILE, TRAINING_FILE, VALIDATION_FILE = '\\testing.pkl', '\\training.pkl', '\\validation.pkl'
 
     # Private:
     def _get_base_path(self) -> str:

@@ -316,7 +316,7 @@ class Window(Frame):
             if flag:
                 a.getData(num_cities, citySelected, int(start_year_parameter.get()), int(end_year_parameter.get()))
                 test = _RNN.RNN
-                out = test.runRNN(test, int(future_time_parameter.get()))
+                out = test.run_rnn(test, int(future_time_parameter.get()))
                 citySelected.clear()
                 output_label.delete("1.0", END)
                 output_label.insert(END, "Output:" + out)

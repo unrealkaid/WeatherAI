@@ -7,91 +7,83 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.layers import Dense, Activation, Dropout, TimeDistributed
 from tensorflow.keras.layers import LSTM
 from tensorflow.keras.models import Sequential, load_model
+from AIForecast.utils import PathUtils
 
-# tf.compat.v1.disable_eager_execution()
 data_path = '/'
-offset = 8
+offset_in_hours = 8
 
 
-def load_data(data_path):
-    # get the data paths
-    train_path = "/training.pkl"
-    valid_path = "/validation.pkl"
-    test_path = "/testing.pkl"
+# counts data size of pkl files
+def counting_pkl_size():
+    path_utils = PathUtils()
+    train_path = path_utils.get_pkl_path() + path_utils.TRAINING_FILE
+    valid_path = path_utils.get_pkl_path() + path_utils.VALIDATION_FILE
+    test_path = path_utils.get_pkl_path() + path_utils.TESTING_FILE
 
-    return data_path + train_path, data_path + valid_path, data_path + test_path
-
-
-def counting_pkl_size(data_path):
-    train_data, valid_data, test_data = load_data(data_path)
-    train_path = train_data
-    valid_path = valid_data
-    test_path = test_data
-
-    trainSize = 0
-    validSize = 0
-    testSize = 0
+    train_size = 0
+    valid_size = 0
+    test_size = 0
 
     with open(train_path, 'rb') as f1:
         while True:
             try:
                 temp = pickle.load(f1)
-            except (EOFError):
+            except EOFError:
                 break
-            trainSize = trainSize + 1
+            train_size = train_size + 1
     f1.close()
 
     with open(valid_path, 'rb') as f2:
         while True:
             try:
                 temp = pickle.load(f2)
-            except (EOFError):
+            except EOFError:
                 break
-            validSize = validSize + 1
+            valid_size = valid_size + 1
     f2.close()
 
     with open(test_path, 'rb') as f3:
         while True:
             try:
                 temp = pickle.load(f3)
-            except (EOFError):
+            except EOFError:
                 break
-            testSize = testSize + 1
+            test_size = test_size + 1
     f3.close()
-    return trainSize, validSize, testSize
+    return train_size, valid_size, test_size
 
 
 # For getting needed y (temperature) values for greater offsets, say 48 hours instead of 1
 # Needs the paths to each data file and the desired offset (in hours)
-def getYData(train_path, valid_path, test_path, offset):
-    train_Y = []
-    valid_Y = []
-    test_Y = []
+def get_y_data(train_path, valid_path, test_path, hours_offset):
+    train_y = []
+    valid_y = []
+    test_y = []
     with open(train_path, 'rb') as train:
-        for x in range(offset):
+        for x in range(hours_offset):
             temp = pickle.load(train)
         while True:
             try:
-                train_Y.append(pickle.load(train)[3][4])
-            except (EOFError):
+                train_y.append(pickle.load(train)[3][4])
+            except EOFError:
                 break
     with open(valid_path, 'rb') as valid:
-        for x in range(offset):
+        for x in range(hours_offset):
             temp = pickle.load(valid)
         while True:
             try:
-                valid_Y.append(pickle.load(valid)[3][4])
-            except (EOFError):
+                valid_y.append(pickle.load(valid)[3][4])
+            except EOFError:
                 break
     with open(test_path, 'rb') as test:
-        for x in range(offset):
+        for x in range(hours_offset):
             temp = pickle.load(test)
         while True:
             try:
-                test_Y.append(pickle.load(test)[3][4])
-            except (EOFError):
+                test_y.append(pickle.load(test)[3][4])
+            except EOFError:
                 break
-    return train_Y, valid_Y, test_Y
+    return train_y, valid_y, test_y
 
 
 class KerasBatchGenerator(object):
@@ -123,7 +115,7 @@ class KerasBatchGenerator(object):
                 for t in range(self.current_spot):
                     temp = pickle.load(f)
                 for i in range(self.batch_size + (num_steps - 1)):
-                    if (i == 0):
+                    if i == 0:
                         temp_x = pickle.load(f)
                         temp_x = np.delete(temp_x, 3, axis=0)  # removes erie data row
                         x[i] = temp_x[0][3], temp_x[1][3], temp_x[2][3]
@@ -151,22 +143,22 @@ num_steps = 1
 batch_size = 72
 
 
-class RNN():
+class RNN:
     # this function will run the RNN with whatever data is currently in the .pkl files
     train_data, valid_data, test_data = " ", " ", " "
     train_size, valid_size, test_size = 0, 0, 0
     train_Y, valid_Y, test_Y = [], [], []
 
-    def runRNN(self, hours_ahead):
-        # get correct directory
-        # Tk().withdraw()
-        # data_path = askdirectory(title="Please Select Project Folder")
-        offset = hours_ahead
-        self.train_data, self.valid_data, self.test_data = load_data(data_path)
+    def run_rnn(self):
+        path_utils = PathUtils()
+        self.train_data = path_utils.get_pkl_path() + path_utils.TRAINING_FILE
+        self.valid_data = path_utils.get_pkl_path() + path_utils.VALIDATION_FILE
+        self.test_data = path_utils.get_pkl_path() + path_utils.TESTING_FILE
 
-        self.train_size, self.valid_size, self.test_size = counting_pkl_size(data_path)
+        self.train_size, self.valid_size, self.test_size = counting_pkl_size()
 
-        self.train_Y, self.valid_Y, self.test_Y = getYData(self.train_data, self.valid_data, self.test_data, offset)
+        self.train_Y, self.valid_Y, self.test_Y = get_y_data(self.train_data, self.valid_data, self.test_data,
+                                                             offset_in_hours)
 
         train_data_generator = KerasBatchGenerator(self.train_data, self.train_Y, num_steps, batch_size,
                                                    self.train_size,
@@ -177,7 +169,6 @@ class RNN():
         hidden_size = 160
         use_dropout = True
         model = Sequential()
-        # model.add(Embedding(8000, embedding_size, input_length=num_steps))
         model.add(LSTM(hidden_size, input_shape=(num_steps, 3), return_sequences=True,
                        kernel_initializer=keras.initializers.VarianceScaling(),
                        recurrent_initializer=keras.initializers.VarianceScaling()))
@@ -194,22 +185,21 @@ class RNN():
                       metrics=['mean_absolute_percentage_error'])
 
         print(model.summary())
-        checkpointer = ModelCheckpoint(filepath=data_path + '/model-{epoch:02d}.hdf5', verbose=1)
+        check_pointer = ModelCheckpoint(filepath=data_path + '/model-{epoch:02d}.hdf5', verbose=1)
         num_epochs = 50
         model.fit_generator(train_data_generator.generate(), self.train_size / (batch_size - 2), num_epochs,
                             validation_data=valid_data_generator.generate(),
-                            validation_steps=self.valid_size / (batch_size - 2), callbacks=[checkpointer])
+                            validation_steps=self.valid_size / (batch_size - 2), callbacks=[check_pointer])
 
         model = load_model(data_path + "/model-50.hdf5")
-        dummy_iters = 50
+        dummy_iterators = 50
         example_training_generator = KerasBatchGenerator(self.valid_data, self.valid_Y, num_steps, batch_size,
                                                          self.valid_size,
                                                          skip_step=1)
         return_string = ""
-        return_string = return_string + "Training is complete.\n Here are some testing reults: \n\n"
+        return_string = return_string + "Training is complete.\n Here are some testing results: \n\n"
         return_string = return_string + "Validation data:\n"
-        # print("Validation data:")
-        for i in range(dummy_iters):
+        for i in range(dummy_iterators):
             dummy = next(example_training_generator.generate())
         num_predict = 50
         accuracy = 0
@@ -220,23 +210,19 @@ class RNN():
             prediction = model.predict(test)
             actual = ((y[i] * (323.0 - 244.0) + 244.0) - 273.15) * (9.0 / 5.0) + 32.0
             prediction = ((prediction * (323.0 - 244.0) + 244.0) - 273.15) * (9.0 / 5.0) + 32.0
-            if (abs(actual - prediction) < 10):
+            if abs(actual - prediction) < 10:
                 accuracy += 1
             return_string = return_string + "Actual: " + str(actual) + "\n"
-            # print("Actual: " + str(actual))  # converts data to f
             return_string = return_string + "Prediction: " + str(prediction) + "\n"
-            # print("Prediction: " + str(prediction))
         accuracy = accuracy / num_predict
         return_string = return_string + "\nAccuracy: " + str(accuracy * 100) + "\n\n"
-        # print("\nAccuracy: " + str(accuracy * 100) + "\n")
 
         # test data set
-        dummy_iters = 10
+        dummy_iterators = 10
         example_test_generator = KerasBatchGenerator(self.test_data, self.test_Y, num_steps, batch_size, self.test_size,
                                                      skip_step=1)
         return_string = return_string + "Test data:\n"
-        # print("Test data:")
-        for i in range(dummy_iters):
+        for i in range(dummy_iterators):
             dummy = next(example_test_generator.generate())
         num_predict = 50
         accuracy = 0
@@ -247,17 +233,11 @@ class RNN():
             prediction = model.predict(test)
             actual = ((y[i] * (323.0 - 244.0) + 244.0) - 273.15) * (9.0 / 5.0) + 32.0
             prediction = ((prediction * (323.0 - 244.0) + 244.0) - 273.15) * (9.0 / 5.0) + 32.0
-            if (abs(actual - prediction) < 10):
+            if abs(actual - prediction) < 10:
                 accuracy += 1
             return_string = return_string + "Actual: " + str(actual) + "\n"
-            # print("Actual: " + str(actual))  # converts data to f
             return_string = return_string + "Prediction: " + str(prediction) + "\n"
-            # print("Prediction: " + str(prediction))
         accuracy = accuracy / num_predict
         return_string = return_string + "\nAccuracy: " + str(accuracy * 100) + "\n\n"
-        # print("\nAccuracy: " + str(accuracy * 100) + "\n")
         print(return_string)
         return return_string
-
-# test = RNN
-# test.runRNN(test, 8)
