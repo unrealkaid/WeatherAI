@@ -18,7 +18,7 @@ class PathUtils:
     # Names of the data directory.
     # The data directory stores all relevant system files.
     # This variable should remain constant.
-    DATA_DIR, MODEL_DIR, PKL_DIR = 'data', 'data\\models', 'data\\pickles'
+    DATA_DIR, MODEL_DIR, PKL_DIR = 'data\\mlo_full.csv', 'data\\models', 'data\\pickles'
 
     # Private:
     # Name of the file that stores the API key/
