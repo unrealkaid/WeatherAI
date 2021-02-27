@@ -1,9 +1,18 @@
 import tkinter as tk
 from enum import Enum
 from typing import List, Dict
+
+import dash
+import dash_table
+import dash_core_components as dcc
+import dash_html_components as html
 import numpy as np
+import pandas as pd
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
+                                               NavigationToolbar2Tk)
+from matplotlib.figure import Figure
 from tensorflow.python.keras.models import load_model
-from AIForecast.access import WeatherAccess
+
 from AIForecast import utils
 from AIForecast.RNN import _RNN
 
@@ -24,6 +33,8 @@ BUTTON_FOREGROUND = 'black'
 _ALIGN_X = 10
 _ALIGN_Y = 10
 
+SOURCE_DATA = pd.read_csv(utils.path_utils.get_data_path())
+
 
 class Menus(Enum):
     """
@@ -35,6 +46,7 @@ class Menus(Enum):
     MAIN_MENU = 0
     TEST_MENU = 1
     TRAIN_MENU = 2
+    CLIMATE_CHANGE_MENU = 3
 
 
 class Drawable:
@@ -108,6 +120,16 @@ class NavBar(Drawable):
                 bg=BUTTON_BACKGROUND,
                 fg=BUTTON_FOREGROUND,
                 command=lambda: AppWindow.display_screen(Menus.TRAIN_MENU)
+            )
+        )
+        self.nav_buttons.append(
+            tk.Button(
+                self.nav_frame,
+                text="ClimateChange",
+                borderwidth=BUTTON_BORDER_WIDTH,
+                bg=BUTTON_BACKGROUND,
+                fg=BUTTON_FOREGROUND,
+                command=lambda: AppWindow.display_screen(Menus.CLIMATE_CHANGE_MENU)
             )
         )
 
@@ -484,6 +506,106 @@ class TrainMenu(Menu):
 
 class OptionsMenu(Menu):
     pass
+
+
+class ClimateChangeMenu(Menu):
+    def __init__(self, app_frame: tk.Frame):
+        Menu.__init__(self, app_frame)
+        self.dates = []
+        self.generate_plot_button = None  # Type: tk.Button
+        self.data_source_table_button = None  # Type: tk.Button
+        self.graph_frame = None  # Type: tk.Frame
+        self.tool_frame = None  # Type: tk.Frame
+        self.data_selection_box = None  # Type: tk.Listbox
+
+    def init_ui(self):
+        Menu.init_ui(self)
+        self.graph_frame = tk.Frame(master=self.body, bg=BACKGROUND_COLOR)
+        self.tool_frame = tk.Frame(master=self.body, bg=BACKGROUND_COLOR)
+        self.generate_plot_button = tk.Button(
+            self.tool_frame,
+            text="Generate Line Graph",
+            bg=BUTTON_BACKGROUND,
+            fg=BUTTON_FOREGROUND,
+            command=lambda: self.generate_plot()
+        )
+        self.data_source_table_button = tk.Button(
+            self.tool_frame,
+            text="Show Source Data Explorer",
+            bg=BUTTON_BACKGROUND,
+            fg=BUTTON_FOREGROUND,
+            command=lambda: generate_table()  # Todo: add functionality for this button
+        )
+        self.data_selection_box = tk.Listbox(
+            self.tool_frame,
+            bg=BUTTON_BACKGROUND,
+            fg=BUTTON_FOREGROUND,
+        )
+
+    def draw(self):
+        Menu.draw(self)
+        self.graph_frame.place(relx=0.3, rely=0, relwidth=0.7, relheight=1)
+        self.tool_frame.place(relx=0, rely=0, width=200, relheight=1)
+        self.generate_plot_button.place(x=_ALIGN_X + 5, y=_ALIGN_Y + 5, width=180)
+        self.data_source_table_button.place(x=_ALIGN_X + 5, y=_ALIGN_Y + 60, width=180)
+        self.data_selection_box.place(x=_ALIGN_X + 5, y=_ALIGN_Y + 125, width=180, relheight=.6)
+        self.populate_data_picker()
+
+    def hide(self):
+        Menu.hide(self)
+
+    def generate_plot(self):
+        """
+        Author: Marcus Kline
+        Purpose: plots data given on a 2D line graph
+        :return:
+        """
+        for widget in self.graph_frame.winfo_children():
+            widget.destroy()
+        figure = Figure(figsize=(7, 5), dpi=100)
+        figure.set_tight_layout(True)
+        plot1 = figure.add_subplot(111)
+        plot1.grid()
+        plot1.set_ylabel(str(self.data_selection_box.get(tk.ACTIVE)))
+        plot1.set_xlabel('year')
+        plot1.plot(self.dates, SOURCE_DATA[str(self.data_selection_box.get(tk.ACTIVE))])
+        canvas = FigureCanvasTkAgg(figure, master=self.graph_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack()
+        toolbar = NavigationToolbar2Tk(canvas, self.graph_frame)
+        toolbar.update()
+
+    def populate_data_picker(self):
+        """
+        Author: Marcus Kline
+        Purpose: Populates the data picker text field with columns from the data source.
+        :return:
+        """
+
+        for i in SOURCE_DATA.index:
+            self.dates.append(str(SOURCE_DATA['month'][i]) + '/' + str(SOURCE_DATA['year'][i]))
+        for i in SOURCE_DATA:
+            self.data_selection_box.insert(tk.END, SOURCE_DATA[i].name)
+        self.data_selection_box.delete(0, 2)
+
+
+def generate_table(self):
+    """
+    Author: Marcus Kline
+    Purpose: generates a table of the data source being used.
+    :return:
+    """
+    """id='table',
+                        columns=data.columns,
+                        data=data.to_dict(),"""
+    data_table = dash.Dash(__name__)
+    data_table.layout = dash_table.DataTable(
+        id='table',
+        columns=[{"name": i, "id": i} for i in SOURCE_DATA.columns],
+        data=SOURCE_DATA.to_dict('records'),
+    )
+    if __name__ == '__main__':
+        data_table.run_server(debug=True)
 
 
 class AppWindow:
