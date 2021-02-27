@@ -3,7 +3,7 @@ from AIForecast import utils
 import tkinter as tk
 
 from AIForecast.access import WeatherAccess
-from AIForecast.ui.widgets import AppWindow, Menus, MainMenu, TestMenu, TrainMenu
+from AIForecast.ui.widgets import AppWindow, Menus, MainMenu, TestMenu, TrainMenu, ClimateChangeMenu
 
 
 def main():
@@ -19,6 +19,7 @@ def main():
     app.register_menu(MainMenu(app.frame), Menus.MAIN_MENU)
     app.register_menu(TestMenu(app.frame), Menus.TEST_MENU)
     app.register_menu(TrainMenu(app.frame), Menus.TRAIN_MENU)
+    app.register_menu(ClimateChangeMenu(app.frame), Menus.CLIMATE_CHANGE_MENU)
     app.display_screen(Menus.MAIN_MENU)
 
     root.mainloop()
