@@ -18,7 +18,7 @@ class PathUtils:
     # Names of the data directory.
     # The data directory stores all relevant system files.
     # This variable should remain constant.
-    DATA_DIR, MODEL_DIR, PKL_DIR = 'data\\mlo_full.csv', 'data\\models', 'data\\pickles'
+    DATA_DIR, MODEL_DIR, PKL_DIR = 'data', 'data\\models', 'data\\pickles'
 
     # Private:
     # Name of the file that stores the API key/
@@ -29,35 +29,49 @@ class PathUtils:
     TESTING_FILE, TRAINING_FILE, VALIDATION_FILE = '\\testing.pkl', '\\training.pkl', '\\validation.pkl'
 
     # Private:
-    def _get_base_path(self) -> str:
-        return self._save_path \
-            if self._is_custom_path \
+    @staticmethod
+    def get_root_directory() -> str:
+        return PathUtils._save_path \
+            if PathUtils._is_custom_path \
             else ROOT_DIR
 
     # Public:
-    def set_save_path(self, path: str) -> None:
-        self._save_path = path
-        self._is_custom_path = True
+    @staticmethod
+    def set_save_path(path: str) -> None:
+        PathUtils._save_path = path
+        PathUtils._is_custom_path = True
 
     # Public:
-    def get_data_path(self) -> str:
-        return osp.join(self._get_base_path(), self.DATA_DIR)
+    @staticmethod
+    def get_data_path() -> str:
+        return osp.join(PathUtils.get_root_directory(), PathUtils.DATA_DIR)
 
     # Public:
-    def get_model_path(self) -> str:
-        return osp.join(self._get_base_path(), self.MODEL_DIR)
+    @staticmethod
+    def get_model_path() -> str:
+        return osp.join(PathUtils.get_data_path(), PathUtils.MODEL_DIR)
 
-    # Public:
-    def get_pkl_path(self) -> str:
-        return osp.join(self._get_base_path(), self.PKL_DIR)
+    @staticmethod
+    def get_pkl_path() -> str:
+        return osp.join(PathUtils.get_data_path(), PathUtils.PKL_DIR)
 
-    # Public:
-    # Returns the Open Weather Map key used to access openweathermap.orc
-    # Though this function is public, it should be treated as a private function since
-    # an OWM object can be accessed by importing utils owm_access.
-    # 'from utils import owm_access'
-    def get_owm_apikey(self) -> str:
-        key_path = osp.join(ROOT_DIR, self._API_KEY_FILE).replace('\\', os.path.sep)
+    @staticmethod
+    def get_file(base_dir: str, file_name: str):
+        return osp.join(base_dir, file_name)
+
+    @staticmethod
+    def file_exists(file_path: str) -> bool:
+        return os.path.isfile(file_path)
+
+    @staticmethod
+    def get_owm_apikey() -> str:
+        """
+        Returns the Open Weather Map key used to access openweathermap.orc
+        Though this function is public, it should be treated as a private function since
+        an OWM object can be accessed by importing utils owm_access.
+        'from utils import owm_access'
+        """
+        key_path = osp.join(ROOT_DIR, PathUtils._API_KEY_FILE).replace('\\', os.path.sep)
         key_file = open(key_path, 'r')
         api_key = key_file.readline()
         key_file.close()

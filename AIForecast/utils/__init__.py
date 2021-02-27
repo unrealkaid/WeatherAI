@@ -2,8 +2,7 @@ from AIForecast.utils.PathUtils import PathUtils
 from pyowm.owm import OWM
 import logging as logger
 
-path_utils = PathUtils()
-owm_access = OWM(path_utils.get_owm_apikey())
+owm_access = OWM(PathUtils.get_owm_apikey())
 logger.basicConfig(format=logger.BASIC_FORMAT, level=logger.DEBUG)
 
 

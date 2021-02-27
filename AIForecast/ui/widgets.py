@@ -1,26 +1,26 @@
 import tkinter as tk
 from enum import Enum
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import List, Dict
 
 import dash
 import dash_table
-import dash_core_components as dcc
-import dash_html_components as html
 import numpy as np
 import pandas as pd
+from tkinter import filedialog
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
                                                NavigationToolbar2Tk)
 from matplotlib.figure import Figure
 from tensorflow.python.keras.models import load_model
 
+from AIForecast.access import ClimateAccess
 from AIForecast import utils
-from AIForecast.RNN import _RNN
+from AIForecast.RNN import RNN
 
-BACKGROUND_COLOR = '#525453'
 """
 Default background color for most UI elements.
 """
-
+BACKGROUND_COLOR = '#525453'
 FOREGROUND_COLOR = 'white'
 
 H1_FONT = 100
@@ -32,8 +32,6 @@ BUTTON_FOREGROUND = 'black'
 
 _ALIGN_X = 10
 _ALIGN_Y = 10
-
-SOURCE_DATA = pd.read_csv(utils.path_utils.get_data_path())
 
 
 class Menus(Enum):
@@ -500,7 +498,7 @@ class TrainMenu(Menu):
         :return: NULL
         Author: Marcus Kline
         """
-        rnn_object = _RNN.RNN()
+        rnn_object = RNN.RNN()
         self.output_text.insert(rnn_object.run_rnn())
 
 
@@ -514,14 +512,24 @@ class ClimateChangeMenu(Menu):
         self.dates = []
         self.generate_plot_button = None  # Type: tk.Button
         self.data_source_table_button = None  # Type: tk.Button
+        self.upload_new_data = None  # Type: tk.Button
         self.graph_frame = None  # Type: tk.Frame
         self.tool_frame = None  # Type: tk.Frame
         self.data_selection_box = None  # Type: tk.Listbox
+        self.source_data = None  # Type: pd.DataFrame
 
     def init_ui(self):
         Menu.init_ui(self)
+        self.source_data = ClimateAccess.get_source_data()
         self.graph_frame = tk.Frame(master=self.body, bg=BACKGROUND_COLOR)
         self.tool_frame = tk.Frame(master=self.body, bg=BACKGROUND_COLOR)
+        self.upload_new_data = tk.Button(
+            self.tool_frame,
+            text="Upload New Data",
+            bg=BUTTON_BACKGROUND,
+            fg=BUTTON_FOREGROUND,
+            command=lambda: self.upload_data()
+        )
         self.generate_plot_button = tk.Button(
             self.tool_frame,
             text="Generate Line Graph",
@@ -534,7 +542,7 @@ class ClimateChangeMenu(Menu):
             text="Show Source Data Explorer",
             bg=BUTTON_BACKGROUND,
             fg=BUTTON_FOREGROUND,
-            command=lambda: generate_table()  # Todo: add functionality for this button
+            command=lambda: self.generate_table()  # Todo: add functionality for this button
         )
         self.data_selection_box = tk.Listbox(
             self.tool_frame,
@@ -544,12 +552,13 @@ class ClimateChangeMenu(Menu):
 
     def draw(self):
         Menu.draw(self)
-        self.graph_frame.place(relx=0.3, rely=0, relwidth=0.7, relheight=1)
-        self.tool_frame.place(relx=0, rely=0, width=200, relheight=1)
-        self.generate_plot_button.place(x=_ALIGN_X + 5, y=_ALIGN_Y + 5, width=180)
-        self.data_source_table_button.place(x=_ALIGN_X + 5, y=_ALIGN_Y + 60, width=180)
-        self.data_selection_box.place(x=_ALIGN_X + 5, y=_ALIGN_Y + 125, width=180, relheight=.6)
-        self.populate_data_picker()
+        self.graph_frame.place(relx=.2, rely=0, relwidth=0.8, relheight=1)
+        self.tool_frame.place(relx=0, rely=0, relwidth=.2, relheight=1)
+        self.generate_plot_button.place(x=_ALIGN_X + 5, y=_ALIGN_Y + 5, relwidth=.9)
+        self.data_source_table_button.place(x=_ALIGN_X + 5, y=_ALIGN_Y + 60, relwidth=.9)
+        self.data_selection_box.place(x=_ALIGN_X + 5, y=_ALIGN_Y + 125, relwidth=.9, relheight=.6)
+        self.upload_new_data.place(x=_ALIGN_X + 5, rely=.9, relwidth=.9)
+        self.populate_data_picker(self.source_data)
 
     def hide(self):
         Menu.hide(self)
@@ -562,50 +571,62 @@ class ClimateChangeMenu(Menu):
         """
         for widget in self.graph_frame.winfo_children():
             widget.destroy()
-        figure = Figure(figsize=(7, 5), dpi=100)
-        figure.set_tight_layout(True)
+        figure = Figure(figsize=(7, 5), dpi=100, constrained_layout=True)
         plot1 = figure.add_subplot(111)
         plot1.grid()
         plot1.set_ylabel(str(self.data_selection_box.get(tk.ACTIVE)))
         plot1.set_xlabel('year')
-        plot1.plot(self.dates, SOURCE_DATA[str(self.data_selection_box.get(tk.ACTIVE))])
+        plot1.plot(self.dates, self.source_data[str(self.data_selection_box.get(tk.ACTIVE))])
         canvas = FigureCanvasTkAgg(figure, master=self.graph_frame)
         canvas.draw()
         canvas.get_tk_widget().pack()
         toolbar = NavigationToolbar2Tk(canvas, self.graph_frame)
         toolbar.update()
 
-    def populate_data_picker(self):
+    def populate_data_picker(self, data):
         """
         Author: Marcus Kline
         Purpose: Populates the data picker text field with columns from the data source.
         :return:
         """
-
-        for i in SOURCE_DATA.index:
-            self.dates.append(str(SOURCE_DATA['month'][i]) + '/' + str(SOURCE_DATA['year'][i]))
-        for i in SOURCE_DATA:
-            self.data_selection_box.insert(tk.END, SOURCE_DATA[i].name)
+        self.data_selection_box.delete(0, tk.END)
+        self.dates = pd.to_datetime(data[['year', 'month']].assign(day=1))
+        for i in data:
+            self.data_selection_box.insert(tk.END, data[i].name)
         self.data_selection_box.delete(0, 2)
 
-
-def generate_table(self):
-    """
+    def generate_table(self):
+        """
     Author: Marcus Kline
     Purpose: generates a table of the data source being used.
     :return:
     """
-    """id='table',
+        """id='table',
                         columns=data.columns,
                         data=data.to_dict(),"""
-    data_table = dash.Dash(__name__)
-    data_table.layout = dash_table.DataTable(
-        id='table',
-        columns=[{"name": i, "id": i} for i in SOURCE_DATA.columns],
-        data=SOURCE_DATA.to_dict('records'),
-    )
-    if __name__ == '__main__':
-        data_table.run_server(debug=True)
+        """data_table = dash.Dash(__name__)
+        data_table.layout = dash_table.DataTable(
+            id='source data table',
+            columns=[{"name": i, "id": i} for i in self.source_data.columns],
+            data=self.source_data.to_dict(),
+        )
+        data_table.run_server(debug=True)"""
+        df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/solar.csv')
+
+        app = dash.Dash(__name__)
+        app.layout = dash_table.DataTable(
+            id='table',
+            columns=[{"name": i, "id": i} for i in df.columns],
+            data=df.to_dict('records'),
+        )
+
+        if __name__ == 'AIForecast.ui.widgets':
+            app.run_server(self, debug=True)
+
+    def upload_data(self):
+        new_data = filedialog.askopenfile(mode='r', filetypes=[('CSV Files', '*.csv')])
+        if new_data is not None:
+            self.populate_data_picker(pd.read_csv(new_data))
 
 
 class AppWindow:

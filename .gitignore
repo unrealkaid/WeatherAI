@@ -1,4 +1,6 @@
 .idea
 venv
 Data.json
+Data.csv
+Data.cvs
 owm_apikey.txt
