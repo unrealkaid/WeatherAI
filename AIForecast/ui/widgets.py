@@ -619,9 +619,7 @@ class ClimateChangeMenu(Menu):
             columns=[{"name": i, "id": i} for i in df.columns],
             data=df.to_dict('records'),
         )
-
-        if __name__ == 'AIForecast.ui.widgets':
-            app.run_server(self, debug=True)
+        app.run_server(debug=True)
 
     def upload_data(self):
         new_data = filedialog.askopenfile(mode='r', filetypes=[('CSV Files', '*.csv')])
